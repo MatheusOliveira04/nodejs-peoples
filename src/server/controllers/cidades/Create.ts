@@ -1,6 +1,31 @@
-import type { Request, Response } from 'express';
+import type { Request, RequestHandler, Response } from 'express';
 import { StatusCodes } from 'http-status-codes';
 import * as yup from 'yup';
+
+export interface IFilter {
+  filter: string;
+}
+
+const queryValidation: yup.ObjectSchema<IFilter> = yup.object().shape({
+  filter: yup.string().required()
+});
+
+export const createQueryValidation: RequestHandler = async (req, res, next) => {
+    try {
+    await bodyValidation.validate(req.query, { abortEarly: false });
+    return next(); 
+  } catch(err) {
+    const yupError = err as yup.ValidationError;
+    const errors: Record<string, string> = {};
+
+    yupError.inner.forEach(err => {
+      if (!err.path) return;
+      errors[err.path] = err.message;
+    });
+
+    return res.status(StatusCodes.BAD_REQUEST).json(errors);
+  }
+}
 
 export interface ICidade {
   nome: string;
@@ -11,24 +36,25 @@ const bodyValidation: yup.ObjectSchema<ICidade> = yup.object().shape({
   cidade: yup.string().required()
 }); 
 
-export const create = async (req: Request<{}, {}, ICidade>, res: Response) => {
-  let validatedData: ICidade | undefined = undefined;
+export const createBodyValidation: RequestHandler = async (req, res, next) => {
   try {
-    validatedData = await bodyValidation.validate(req.body, { abortEarly: false }) as ICidade;
-  } catch(error) {
-    const yupError = error as yup.ValidationError;
-    const err: Record<string, string> = {};
+    await bodyValidation.validate(req.body, { abortEarly: false });
+    return next();
+  } catch(err) {
+    const yupError = err as yup.ValidationError;
+    const errors: Record<string, string> = {};
 
-    yupError.inner.forEach(error => {
-      if (!error.path) return;
-       err[error.path] = error.message;
-    }); 
-
-    return res.status(StatusCodes.BAD_REQUEST).json({
-      err
+    yupError.inner.forEach(err => {
+      if (!err.path) return;
+      errors[err.path] = err.message;
     });
+
+    return res.status(StatusCodes.BAD_REQUEST).json(errors);
   }
-  console.log(validatedData);
+};
+
+export const create = async (req: Request<{}, {}, ICidade>, res: Response) => {
+  console.log(req.body);
   return res.send('Created');
 };
 
